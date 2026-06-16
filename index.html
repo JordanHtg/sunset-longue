@@ -31,9 +31,9 @@
         <div class="setup-row">
             <div class="setup-label">Pilih Tingkat Level (Privilege):</div>
             <div class="avatar-options">
-                <button class="role-btn" id="role-user" data-role="user">User</button>
+                <button class="role-btn selected" id="role-user" data-role="user">User</button>
                 <button class="role-btn" id="role-admin" data-role="admin">Admin</button>
-                <button class="role-btn selected" id="role-dev" data-role="developer">Developer</button>
+                <button class="role-btn" id="role-dev" data-role="developer">Developer</button>
             </div>
         </div>
         <button id="start-btn">START GAME</button>
@@ -146,7 +146,7 @@
     </div>
 
     <a-scene networked-scene="
-        room: sunset-lounge-v8;
+        room: sunset-lounge-v85;
         debug: true;
         adapter: socketio;
         serverURL: https://jordanhtg-sunset-lounge-backend.hf.space;
