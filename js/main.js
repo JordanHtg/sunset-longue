@@ -1,6 +1,6 @@
 /**
  * Sunset Social Hub - Core System Logic
- * v8.0 Absolute Final Engine - Fixed Lifecycle Race Conditions & Isolation
+ * v8.1 Ultimate Production Engine - Full Functions Restored & Protected
  */
 
 // =========================================================================
@@ -77,7 +77,7 @@ if (typeof AFRAME !== 'undefined') {
 }
 
 // =========================================================================
-// GRUP 2: VARIABEL GLOBAL & STATE ENGINE
+// GRUP 2: VARIABEL STATE & ENGINE CORE
 // =========================================================================
 let chatContainer, chatLog, chatInput, chatBtn, minimizeBtn, camToggleBtn, tipOverlay;
 let notificationTimeout; let myUsername = ""; let currentSelectedAvatar = "cone"; let currentSelectedRole = "developer";
@@ -87,7 +87,7 @@ let isTrackLooping = false; let currentVolumeLevel = 70;
 let bubbleTimeout;
 
 // =========================================================================
-// GRUP 3: LOGIKA UTAMA CORE JUKEBOX & INTERAKSI Normal
+// GRUP 3: LOGIKA UTAMA FUNGSIONAL JUKEBOX & UTILITY
 // =========================================================================
 function cleanAudioFilename(url) {
     try {
@@ -100,14 +100,14 @@ function cleanAudioFilename(url) {
 function initImvuAudioEngine() {
     audioPlayerNode = document.getElementById('global-audio-player');
     if(audioPlayerNode) {
-        audioPlayerNode.addEventListener('ended', () => {
+        audioPlayerNode.onended = () => {
             if (isTrackLooping) { audioPlayerNode.currentTime = 0; audioPlayerNode.play(); } 
             else { playNextQueueTrack(); }
-        });
-        audioPlayerNode.addEventListener('error', () => {
+        };
+        audioPlayerNode.onerror = () => {
             triggerSystemNotice("❌ [JUKEBOX] URL Audio Rusak atau Terblokir CORS!", 4000);
             playNextQueueTrack();
-        });
+        };
     }
 }
 
@@ -210,8 +210,16 @@ function updateCameraView() {
     else { cameraEl.setAttribute('position', `0 ${baseHeight} 0`); camToggleBtn.innerText = '📷 Mode: FPS'; if (localMesh) localMesh.setAttribute('scale', '0 0 0'); }
 }
 
+function toggleCameraLock() {
+    const sceneEl = document.querySelector('a-scene');
+    if (sceneEl && sceneEl.canvas) {
+        if (document.pointerLockElement !== sceneEl.canvas) sceneEl.canvas.requestPointerLock();
+        else document.exitPointerLock();
+    }
+}
+
 // =========================================================================
-// GRUP 4: EXPOSE BINDING KE POROS WINDOW (Bypass Proteksi Lingkup Head)
+// GRUP 4: EXPOSE BINDING GLOBAL WINDOWS (Kebal dari Lifecycle ReferenceError)
 // =========================================================================
 window.toggleAdminMinimize = function() {
     const panel = document.getElementById('admin-menu-panel'); const body = document.getElementById('admin-panel-body');
@@ -223,14 +231,58 @@ window.toggleDevMinimize = function() {
     window.isDevMinimized = !window.isDevMinimized;
     if(body && panel) { body.style.display = window.isDevMinimized ? 'none' : 'block'; panel.style.height = window.isDevMinimized ? '40px' : '195px'; document.getElementById('dev-min-btn').innerText = window.isDevMinimized ? '＋' : '−'; }
 };
+
 window.openMusicController = function() { document.getElementById('music-controller-panel').style.display = 'block'; };
 window.closeMusicController = function() { document.getElementById('music-controller-panel').style.display = 'none'; };
 window.toggleMusicMinimize = function() {
     window.isMusicMinimized = !window.isMusicMinimized; const mPanel = document.getElementById('music-controller-panel');
     if(mPanel) { mPanel.classList.toggle('minimized', window.isMusicMinimized); document.getElementById('music-title-header').innerText = window.isMusicMinimized ? "🎵 Player Minimized..." : "🎵 IMVU Room Music Player"; }
 };
-window.addAudioStreamTrackRoute = window.addAudioStreamTrackRoute = addAudioStreamTrackRoute;
-window.controlAudio = controlAudio; window.submitUserSongRequest = submitUserSongRequest; window.reviewRequestAction = reviewRequestAction;
+
+window.addAudioStreamTrackRoute = function() {
+    const input = document.getElementById('music-url-direct'); const targetUrl = input.value.trim();
+    const check = Security.validateAudioURL(targetUrl);
+    if (!check.valid) { triggerSystemNotice(`❌ [SECURE] ${check.error}`); return; }
+    const parsedTitle = cleanAudioFilename(targetUrl);
+    audioPlaylistQueue.push({ title: parsedTitle, url: targetUrl }); input.value = ""; 
+    triggerSystemNotice(`📥 Ditambahkan ke Antrean:<br>${parsedTitle}`);
+    if (!audioPlayerNode || audioPlayerNode.paused) playNextQueueTrack();
+};
+
+window.controlAudio = function(action) {
+    if(!audioPlayerNode) return;
+    switch(action) {
+        case 'play':
+            if (!audioPlayerNode.paused) { audioPlayerNode.pause(); triggerSystemNotice("⏸ Musik Streaming Dijeda"); } 
+            else { audioPlayerNode.play(); triggerSystemNotice("▶ Musik Streaming Dilanjutkan"); } break;
+        case 'loop':
+            isTrackLooping = !isTrackLooping; audioPlayerNode.loop = isTrackLooping;
+            document.getElementById('btn-loop-toggle').innerText = isTrackLooping ? "🔁 Loop: On" : "🔁 Loop: Off";
+            triggerSystemNotice(isTrackLooping ? "🔁 Loop Lagu Aktif" : "🔁 Loop Lagu Mati"); break;
+        case 'replay': audioPlayerNode.currentTime = 0; audioPlayerNode.play(); triggerSystemNotice("🔄 Mengulang Dari Awal"); break;
+        case 'vol-up': currentVolumeLevel = Math.min(100, currentVolumeLevel + 10); audioPlayerNode.volume = currentVolumeLevel / 100; triggerSystemNotice(`🔊 Volume Room: ${currentVolumeLevel}%`); break;
+        case 'vol-down': currentVolumeLevel = Math.max(0, currentVolumeLevel - 10); audioPlayerNode.volume = currentVolumeLevel / 100; triggerSystemNotice(`🔉 Volume Room: ${currentVolumeLevel}%`); break;
+        case 'skip': triggerSystemNotice("⏭ Lagu Di-skip"); playNextQueueTrack(); break;
+    }
+};
+
+window.submitUserSongRequest = function() {
+    const input = document.getElementById('user-song-link-input'); const targetUrl = input.value.trim();
+    const check = Security.validateAudioURL(targetUrl);
+    if (!check.valid) { triggerSystemNotice(`❌ [SECURE] ${check.error}`); return; }
+    const parsedTitle = cleanAudioFilename(targetUrl);
+    pendingUserRequests.push({ title: parsedTitle, url: targetUrl, sender: myUsername });
+    input.value = ""; window.toggleUserRequestPanel(); triggerSystemNotice("🚀 Request dikirim ke Admin Panel!"); renderAdminReviewDOM();
+};
+
+window.reviewRequestAction = function(index, isAccepted) {
+    const targeted = pendingUserRequests[index];
+    if(isAccepted) {
+        audioPlaylistQueue.push({ title: targeted.title, url: targeted.url }); triggerSystemNotice(`✓ Request diterima: ${targeted.title}`);
+        if (!audioPlayerNode || audioPlayerNode.paused) playNextQueueTrack();
+    } else { triggerSystemNotice(`🗑️ Request musik ditolak`); }
+    pendingUserRequests.splice(index, 1); renderAdminReviewDOM();
+};
 
 window.openKickInterface = function() {
     const listContainer = document.getElementById('kick-user-list'); if(!listContainer) return;
@@ -253,6 +305,7 @@ window.openKickInterface = function() {
     }
     document.getElementById('kick-state-list').style.display = 'block'; document.getElementById('kick-state-confirm').style.display = 'none'; document.getElementById('kick-modal').style.display = 'block';
 };
+
 window.confirmKickAction = function() {
     document.getElementById('kick-modal').style.display = 'none'; triggerSystemNotice(`⚡ User ${selectedKickName} telah di kick!`, 3000);
     if (selectedKickClientId !== "mock123" && typeof NAF !== 'undefined') { const targetEntity = NAF.entities.entities[selectedKickClientId]; if (targetEntity) targetEntity.parentNode.removeChild(targetEntity); }
@@ -260,8 +313,8 @@ window.confirmKickAction = function() {
 };
 window.cancelKickAction = function() { document.getElementById('kick-modal').style.display = 'none'; selectedKickClientId = null; selectedKickName = ""; };
 window.closeKickModal = function() { document.getElementById('kick-modal').style.display = 'none'; };
-window.adminAction = adminAction; window.devAction = devAction; window.toggleCameraMode = toggleCameraMode; window.toggleMinimize = toggleMinimize;
 
+window.adminAction = adminAction; window.devAction = devAction; window.toggleCameraMode = toggleCameraMode; window.toggleMinimize = toggleMinimize;
 window.toggleUserRequestPanel = function() {
     const panel = document.getElementById('user-request-panel'); if(panel) panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
 };
@@ -270,7 +323,6 @@ window.toggleUserRequestPanel = function() {
 // GRUP 5: INTERACTION MATRIX CENTRAL (Hanya Berjalan Saat DOM Siap Sempurna)
 // =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Ambil Penugasan Objek Elemen HUD secara Aman
     chatContainer = document.getElementById('chat-container');
     chatLog = document.getElementById('chat-log');
     chatInput = document.getElementById('chat-input');
@@ -279,19 +331,16 @@ document.addEventListener("DOMContentLoaded", () => {
     camToggleBtn = document.getElementById('camera-toggle-btn');
     tipOverlay = document.getElementById('shortcut-tip');
 
-    // 2. Hubungkan Opsi Bentuk Avatar
     const btnCone = document.getElementById('btn-cone'); const btnBox = document.getElementById('btn-box'); const btnSphere = document.getElementById('btn-sphere');
     if (btnCone) btnCone.addEventListener('click', () => selectAvatarState('cone'));
     if (btnBox) btnBox.addEventListener('click', () => selectAvatarState('box'));
     if (btnSphere) btnSphere.addEventListener('click', () => selectAvatarState('sphere'));
 
-    // 3. Hubungkan Opsi Hak Akses Role
     const roleUser = document.getElementById('role-user'); const roleAdmin = document.getElementById('role-admin'); const roleDev = document.getElementById('role-dev');
     if (roleUser) roleUser.addEventListener('click', () => selectRoleState('user'));
     if (roleAdmin) roleAdmin.addEventListener('click', () => selectRoleState('admin'));
     if (roleDev) roleDev.addEventListener('click', () => selectRoleState('developer'));
 
-    // 4. Hubungkan Tombol Pemicu Utama START GAME
     const startBtn = document.getElementById('start-btn');
     if (startBtn) {
         startBtn.addEventListener('click', () => {
@@ -303,7 +352,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 5. Hubungkan Opsi Request Jukebox
     const userSongTrigger = document.getElementById('user-song-trigger-btn'); if (userSongTrigger) userSongTrigger.addEventListener('click', window.toggleUserRequestPanel);
     const closeUserReq = document.getElementById('close-user-req-btn'); if (closeUserReq) closeUserReq.addEventListener('click', window.toggleUserRequestPanel);
 });
