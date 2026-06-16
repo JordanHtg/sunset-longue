@@ -1,6 +1,6 @@
 /**
  * Sunset Social Hub - Core System Logic
- * Standard 30 Years Experienced Architecture Optimization
+ * Standard Modern Architecture Optimization - Fixed Event Bindings
  */
 const chatContainer = document.getElementById('chat-container');
 const chatLog = document.getElementById('chat-log');
@@ -15,6 +15,7 @@ let audioPlayerNode = null; let audioPlaylistQueue = []; let pendingUserRequests
 let selectedKickClientId = null; let selectedKickName = "";
 let isTrackLooping = false; let currentVolumeLevel = 70;
 
+// Registrasi Komponen NAF jika pustaka tersedia
 if (typeof NAF !== 'undefined') {
     ['#avatar-cone', '#avatar-box', '#avatar-sphere'].forEach(templateId => {
         NAF.schemas.add({
@@ -142,6 +143,16 @@ function renderAdminReviewDOM() {
     });
 }
 
+// Global scope bindings agar tombol dashboard HTML statis tetap berfungsi normal
+window.openMusicController = openMusicController;
+window.closeMusicController = closeMusicController;
+window.toggleMusicMinimize = toggleMusicMinimize;
+window.addAudioStreamTrackRoute = addAudioStreamTrackRoute;
+window.controlAudio = controlAudio;
+window.toggleUserRequestPanel = toggleUserRequestPanel;
+window.submitUserSongRequest = submitUserSongRequest;
+window.reviewRequestAction = reviewRequestAction;
+
 function reviewRequestAction(index, isAccepted) {
     const targeted = pendingUserRequests[index];
     if(isAccepted) {
@@ -159,6 +170,7 @@ function toggleAdminMinimize() {
     panel.style.height = window.isAdminMinimized ? '40px' : '185px';
     document.getElementById('admin-min-btn').innerText = window.isAdminMinimized ? '＋' : '−';
 }
+window.toggleAdminMinimize = toggleAdminMinimize;
 
 function toggleDevMinimize() {
     const panel = document.getElementById('dev-menu-panel'); const body = document.getElementById('dev-panel-body');
@@ -167,6 +179,7 @@ function toggleDevMinimize() {
     panel.style.height = window.isDevMinimized ? '40px' : '195px';
     document.getElementById('dev-min-btn').innerText = window.isDevMinimized ? '＋' : '−';
 }
+window.toggleDevMinimize = toggleDevMinimize;
 
 function triggerSystemNotice(messageText, customDuration = 2000) {
     clearTimeout(notificationTimeout); tipOverlay.innerHTML = messageText; tipOverlay.style.display = 'block'; tipOverlay.offsetHeight; tipOverlay.style.opacity = '1';
@@ -208,6 +221,7 @@ function openKickInterface() {
     }
     document.getElementById('kick-state-list').style.display = 'block'; document.getElementById('kick-state-confirm').style.display = 'none'; document.getElementById('kick-modal').style.display = 'block';
 }
+window.openKickInterface = openKickInterface;
 
 function initiateKickConfirmation(clientId, username) {
     selectedKickClientId = clientId; selectedKickName = username; document.getElementById('kick-target-display').innerText = username;
@@ -224,18 +238,21 @@ function confirmKickAction() {
 function cancelKickAction() { document.getElementById('kick-modal').style.display = 'none'; selectedKickClientId = null; selectedKickName = ""; }
 function closeKickModal() { document.getElementById('kick-modal').style.display = 'none'; }
 
-function selectAvatarState(type) { currentSelectedAvatar = type; document.querySelectorAll('.avatar-btn').forEach(btn => btn.classList.remove('selected')); document.getElementById(`btn-${type}`).classList.add('selected'); }
+window.confirmKickAction = confirmKickAction;
+window.cancelKickAction = cancelKickAction;
+window.closeKickModal = closeKickModal;
 
-document.querySelectorAll('.avatar-btn, .role-btn, #start-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        setTimeout(() => {
-            const sceneEl = document.querySelector('a-scene');
-            if(sceneEl && sceneEl.canvas) sceneEl.canvas.requestPointerLock();
-        }, 600);
-    });
-});
+function selectAvatarState(type) { 
+    currentSelectedAvatar = type; 
+    document.querySelectorAll('.avatar-btn').forEach(btn => btn.classList.remove('selected')); 
+    document.getElementById(`btn-${type}`).classList.add('selected'); 
+}
 
-function selectRoleState(role) { currentSelectedRole = role; document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('selected')); document.getElementById(`role-${role}`).classList.add('selected'); }
+function selectRoleState(role) { 
+    currentSelectedRole = role; 
+    document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('selected')); 
+    document.getElementById(`role-${role}`).classList.add('selected'); 
+}
 
 function executeStartGame() {
     const nameInput = document.getElementById('username-input');
@@ -275,6 +292,7 @@ function adminAction(actionType) {
         triggerSystemNotice(`☀️ Warna Matahari Berubah!`);
     }
 }
+window.adminAction = adminAction;
 
 function devAction(actionType) {
     if(actionType === 'tp') { document.getElementById('rig').setAttribute('position', '0 0 0'); triggerSystemNotice("🌀 Teleported to Center Room!"); } 
@@ -284,6 +302,7 @@ function devAction(actionType) {
         const sceneEl = document.querySelector('a-scene'); if (sceneEl.hasAttribute('stats')) { sceneEl.removeAttribute('stats'); } else { sceneEl.setAttribute('stats', ''); } triggerSystemNotice("📈 Engine Stats Toggled!");
     }
 }
+window.devAction = devAction;
 
 window.addEventListener('keydown', function(e) {
     if (document.activeElement === chatInput || document.activeElement.tagName === 'INPUT') return;
@@ -302,6 +321,7 @@ function toggleMinimize() {
     else { logArea.style.display = 'flex'; inputArea.style.display = 'flex'; chatContainer.style.height = '400px'; minimizeBtn.innerText = '−'; }
     document.getElementById('player').components['chat-bubble'].updateVisibility();
 }
+window.toggleMinimize = toggleMinimize;
 
 function bindChatSystem(activePlayerEl) {
     let bubbleTimeout;
@@ -329,6 +349,8 @@ function appendToLog(senderName, message) {
 }
 
 function toggleCameraMode() { window.isTpp = !window.isTpp; updateCameraView(); }
+window.toggleCameraMode = toggleCameraMode;
+
 function updateCameraView() {
     const cameraEl = document.getElementById('main-camera'); const localMesh = document.querySelector('#player .avatar-mesh'); let baseHeight = window.isSitting ? 0.8 : 1.6;
     if (window.isTpp) {
@@ -337,3 +359,43 @@ function updateCameraView() {
         cameraEl.setAttribute('position', `0 ${baseHeight} 0`); camToggleBtn.innerText = '📷 Mode: FPS'; if (localMesh) localMesh.setAttribute('scale', '0 0 0');
     }
 }
+
+// =========================================================================
+// CENTRAL INTERACTIVE BINDING MATRIX (Penyelamat Tombol Beku di GitHub Pages)
+// =========================================================================
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Hubungkan Opsi Bentuk Avatar
+    const btnCone = document.getElementById('btn-cone');
+    const btnBox = document.getElementById('btn-box');
+    const btnSphere = document.getElementById('btn-sphere');
+
+    if (btnCone) btnCone.addEventListener('click', () => selectAvatarState('cone'));
+    if (btnBox) btnBox.addEventListener('click', () => selectAvatarState('box'));
+    if (btnSphere) btnSphere.addEventListener('click', () => selectAvatarState('sphere'));
+
+    // 2. Hubungkan Opsi Pilihan Tingkat Level
+    const roleUser = document.getElementById('role-user');
+    const roleAdmin = document.getElementById('role-admin');
+    const roleDev = document.getElementById('role-dev');
+
+    if (roleUser) roleUser.addEventListener('click', () => selectRoleState('user'));
+    if (roleAdmin) roleAdmin.addEventListener('click', () => selectRoleState('admin'));
+    if (roleDev) roleDev.addEventListener('click', () => selectRoleState('developer'));
+
+    // 3. Hubungkan Tombol START GAME
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            executeStartGame();
+            // Kunci pointer lock otomatis 600ms pasca-inisialisasi
+            setTimeout(() => {
+                const sceneEl = document.querySelector('a-scene');
+                if (sceneEl && sceneEl.canvas) sceneEl.canvas.requestPointerLock();
+            }, 600);
+        });
+    }
+
+    // 4. Hubungkan pemicu request lagu di bagian kanan bawah
+    const userSongTrigger = document.getElementById('user-song-trigger-btn');
+    if (userSongTrigger) userSongTrigger.addEventListener('click', toggleUserRequestPanel);
+});
