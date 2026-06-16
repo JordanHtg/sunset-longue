@@ -1,6 +1,6 @@
 /**
  * Sunset Social Hub - Core System Logic
- * v8.1 Ultimate Production Engine - Full Functions Restored & Protected
+ * v8.2 Ultimate Stable Engine - Fixed Global Reference Errors & Full Functions Restored
  */
 
 // =========================================================================
@@ -77,7 +77,7 @@ if (typeof AFRAME !== 'undefined') {
 }
 
 // =========================================================================
-// GRUP 2: VARIABEL STATE & ENGINE CORE
+// GRUP 2: VARIABEL STATE & ENGINE GLOBAL
 // =========================================================================
 let chatContainer, chatLog, chatInput, chatBtn, minimizeBtn, camToggleBtn, tipOverlay;
 let notificationTimeout; let myUsername = ""; let currentSelectedAvatar = "cone"; let currentSelectedRole = "developer";
@@ -87,7 +87,7 @@ let isTrackLooping = false; let currentVolumeLevel = 70;
 let bubbleTimeout;
 
 // =========================================================================
-// GRUP 3: LOGIKA UTAMA FUNGSIONAL JUKEBOX & UTILITY
+// GRUP 3: DEKLARASI FUNGSIONAL STANDARD (Reguler Functions)
 // =========================================================================
 function cleanAudioFilename(url) {
     try {
@@ -218,28 +218,26 @@ function toggleCameraLock() {
     }
 }
 
-// =========================================================================
-// GRUP 4: EXPOSE BINDING GLOBAL WINDOWS (Kebal dari Lifecycle ReferenceError)
-// =========================================================================
-window.toggleAdminMinimize = function() {
+function toggleAdminMinimize() {
     const panel = document.getElementById('admin-menu-panel'); const body = document.getElementById('admin-panel-body');
     window.isAdminMinimized = !window.isAdminMinimized;
     if(body && panel) { body.style.display = window.isAdminMinimized ? 'none' : 'block'; panel.style.height = window.isAdminMinimized ? '40px' : '185px'; document.getElementById('admin-min-btn').innerText = window.isAdminMinimized ? '＋' : '−'; }
-};
-window.toggleDevMinimize = function() {
+}
+
+function toggleDevMinimize() {
     const panel = document.getElementById('dev-menu-panel'); const body = document.getElementById('dev-panel-body');
     window.isDevMinimized = !window.isDevMinimized;
     if(body && panel) { body.style.display = window.isDevMinimized ? 'none' : 'block'; panel.style.height = window.isDevMinimized ? '40px' : '195px'; document.getElementById('dev-min-btn').innerText = window.isDevMinimized ? '＋' : '−'; }
-};
+}
 
-window.openMusicController = function() { document.getElementById('music-controller-panel').style.display = 'block'; };
-window.closeMusicController = function() { document.getElementById('music-controller-panel').style.display = 'none'; };
-window.toggleMusicMinimize = function() {
+function openMusicController() { document.getElementById('music-controller-panel').style.display = 'block'; }
+function closeMusicController() { document.getElementById('music-controller-panel').style.display = 'none'; }
+function toggleMusicMinimize() {
     window.isMusicMinimized = !window.isMusicMinimized; const mPanel = document.getElementById('music-controller-panel');
     if(mPanel) { mPanel.classList.toggle('minimized', window.isMusicMinimized); document.getElementById('music-title-header').innerText = window.isMusicMinimized ? "🎵 Player Minimized..." : "🎵 IMVU Room Music Player"; }
-};
+}
 
-window.addAudioStreamTrackRoute = function() {
+function addAudioStreamTrackRoute() {
     const input = document.getElementById('music-url-direct'); const targetUrl = input.value.trim();
     const check = Security.validateAudioURL(targetUrl);
     if (!check.valid) { triggerSystemNotice(`❌ [SECURE] ${check.error}`); return; }
@@ -247,9 +245,9 @@ window.addAudioStreamTrackRoute = function() {
     audioPlaylistQueue.push({ title: parsedTitle, url: targetUrl }); input.value = ""; 
     triggerSystemNotice(`📥 Ditambahkan ke Antrean:<br>${parsedTitle}`);
     if (!audioPlayerNode || audioPlayerNode.paused) playNextQueueTrack();
-};
+}
 
-window.controlAudio = function(action) {
+function controlAudio(action) {
     if(!audioPlayerNode) return;
     switch(action) {
         case 'play':
@@ -264,27 +262,27 @@ window.controlAudio = function(action) {
         case 'vol-down': currentVolumeLevel = Math.max(0, currentVolumeLevel - 10); audioPlayerNode.volume = currentVolumeLevel / 100; triggerSystemNotice(`🔉 Volume Room: ${currentVolumeLevel}%`); break;
         case 'skip': triggerSystemNotice("⏭ Lagu Di-skip"); playNextQueueTrack(); break;
     }
-};
+}
 
-window.submitUserSongRequest = function() {
+function submitUserSongRequest() {
     const input = document.getElementById('user-song-link-input'); const targetUrl = input.value.trim();
     const check = Security.validateAudioURL(targetUrl);
     if (!check.valid) { triggerSystemNotice(`❌ [SECURE] ${check.error}`); return; }
     const parsedTitle = cleanAudioFilename(targetUrl);
     pendingUserRequests.push({ title: parsedTitle, url: targetUrl, sender: myUsername });
-    input.value = ""; window.toggleUserRequestPanel(); triggerSystemNotice("🚀 Request dikirim ke Admin Panel!"); renderAdminReviewDOM();
-};
+    input.value = ""; toggleUserRequestPanel(); triggerSystemNotice("🚀 Request dikirim ke Admin Panel!"); renderAdminReviewDOM();
+}
 
-window.reviewRequestAction = function(index, isAccepted) {
+function reviewRequestAction(index, isAccepted) {
     const targeted = pendingUserRequests[index];
     if(isAccepted) {
         audioPlaylistQueue.push({ title: targeted.title, url: targeted.url }); triggerSystemNotice(`✓ Request diterima: ${targeted.title}`);
         if (!audioPlayerNode || audioPlayerNode.paused) playNextQueueTrack();
     } else { triggerSystemNotice(`🗑️ Request musik ditolak`); }
     pendingUserRequests.splice(index, 1); renderAdminReviewDOM();
-};
+}
 
-window.openKickInterface = function() {
+function openKickInterface() {
     const listContainer = document.getElementById('kick-user-list'); if(!listContainer) return;
     listContainer.innerHTML = ""; let userCount = 0;
     if (typeof NAF !== 'undefined' && NAF.entities && NAF.entities.entities) {
@@ -304,20 +302,67 @@ window.openKickInterface = function() {
         listContainer.appendChild(item);
     }
     document.getElementById('kick-state-list').style.display = 'block'; document.getElementById('kick-state-confirm').style.display = 'none'; document.getElementById('kick-modal').style.display = 'block';
-};
+}
 
-window.confirmKickAction = function() {
+function confirmKickAction() {
     document.getElementById('kick-modal').style.display = 'none'; triggerSystemNotice(`⚡ User ${selectedKickName} telah di kick!`, 3000);
     if (selectedKickClientId !== "mock123" && typeof NAF !== 'undefined') { const targetEntity = NAF.entities.entities[selectedKickClientId]; if (targetEntity) targetEntity.parentNode.removeChild(targetEntity); }
     selectedKickClientId = null; selectedKickName = "";
-};
-window.cancelKickAction = function() { document.getElementById('kick-modal').style.display = 'none'; selectedKickClientId = null; selectedKickName = ""; };
-window.closeKickModal = function() { document.getElementById('kick-modal').style.display = 'none'; };
+}
+function cancelKickAction() { document.getElementById('kick-modal').style.display = 'none'; selectedKickClientId = null; selectedKickName = ""; }
+function closeKickModal() { document.getElementById('kick-modal').style.display = 'none'; }
 
-window.adminAction = adminAction; window.devAction = devAction; window.toggleCameraMode = toggleCameraMode; window.toggleMinimize = toggleMinimize;
-window.toggleUserRequestPanel = function() {
+function adminAction(actionType) {
+    if(actionType === 'clear') {
+        chatLog.innerHTML = `<div class="chat-msg" style="color:var(--neon-admin)"><span class="sender">Sistem:</span> Log chat dibersihkan oleh Admin.</div>`; triggerSystemNotice("🧹 Chat Cleared!");
+    } else if (actionType === 'sun') {
+        const colors = ['#f05423', '#00ff66', '#ff2a5f', '#feb139', '#00e5ff'];
+        document.getElementById('sunset-sun').setAttribute('material', 'color', colors[Math.floor(Math.random() * colors.length)]); triggerSystemNotice(`☀️ Warna Matahari Berubah!`);
+    }
+}
+
+function devAction(actionType) {
+    if(actionType === 'tp') { document.getElementById('rig').setAttribute('position', '0 0 0'); triggerSystemNotice("🌀 Teleported to Center Room!"); } 
+    else if(actionType === 'wireframe') {
+        document.getElementById('mountains').object3D.traverse(node => { if (node.isMesh && node.material) node.material.wireframe = !node.material.wireframe; }); triggerSystemNotice("🕸️ Wireframe Toggled!");
+    } else if(actionType === 'fps') {
+        const sceneEl = document.querySelector('a-scene'); if (sceneEl.hasAttribute('stats')) { sceneEl.removeAttribute('stats'); } else { sceneEl.setAttribute('stats', ''); } triggerSystemNotice("📈 Engine Stats Toggled!");
+    }
+}
+
+function toggleMinimize() {
+    window.isChatMinimized = !window.isChatMinimized; const logArea = document.getElementById('chat-log'); const inputArea = document.getElementById('chat-input-area');
+    if (window.isChatMinimized) { logArea.style.display = 'none'; inputArea.style.display = 'none'; chatContainer.style.height = '45px'; minimizeBtn.innerText = '＋'; } 
+    else { logArea.style.display = 'flex'; inputArea.style.display = 'flex'; chatContainer.style.height = '400px'; minimizeBtn.innerText = '−'; }
+    const localPlayer = document.getElementById('player');
+    if(localPlayer && localPlayer.components['chat-bubble']) localPlayer.components['chat-bubble'].updateVisibility();
+}
+
+function toggleUserRequestPanel() {
     const panel = document.getElementById('user-request-panel'); if(panel) panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
-};
+}
+
+// =========================================================================
+// GRUP 4: PEMETAAN WINDOW SECARA AMAN (ANTI REFERENCE ERROR)
+// =========================================================================
+window.toggleAdminMinimize = toggleAdminMinimize;
+window.toggleDevMinimize = toggleDevMinimize;
+window.openMusicController = openMusicController;
+window.closeMusicController = closeMusicController;
+window.toggleMusicMinimize = toggleMusicMinimize;
+window.addAudioStreamTrackRoute = addAudioStreamTrackRoute;
+window.controlAudio = controlAudio;
+window.submitUserSongRequest = submitUserSongRequest;
+window.reviewRequestAction = reviewRequestAction;
+window.openKickInterface = openKickInterface;
+window.confirmKickAction = confirmKickAction;
+window.cancelKickAction = cancelKickAction;
+window.closeKickModal = closeKickModal;
+window.adminAction = adminAction;
+window.devAction = devAction;
+window.toggleCameraMode = toggleCameraMode;
+window.toggleMinimize = toggleMinimize;
+window.toggleUserRequestPanel = toggleUserRequestPanel;
 
 // =========================================================================
 // GRUP 5: INTERACTION MATRIX CENTRAL (Hanya Berjalan Saat DOM Siap Sempurna)
