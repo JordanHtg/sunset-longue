@@ -1,9 +1,9 @@
 /**
  * Sunset Social Hub - Core System Logic
- * Fixed Lifecycles, Scope Binding & Password Authentication
+ * v7.6 Production Fix - Resolved Head Race Conditions & DOM Initialization
  */
 
-// I. REGISTRASI KOMPONEN A-FRAME INSTAN (Wajib Dieksekusi Langsung Sebelum Scene Parsing)
+// I. REGISTRASI KOMPONEN A-FRAME INSTAN (Wajib Paling Atas Tanpa Menunggu DOM)
 AFRAME.registerComponent('mouse-look', {
     init: function () {
         this.pitch = 0; this.yaw = 0;
@@ -21,27 +21,34 @@ AFRAME.registerComponent('mouse-look', {
     remove: function () { document.removeEventListener('mousemove', this.onMouseMove); }
 });
 
-// Jalankan inisialisasi seluruh sistem sisa komponen dasar
+// II. DEKLARASI VARIABEL GLOBAL (Tanpa diisi dulu agar tidak memicu null crash di Head)
+let chatContainer, chatLog, chatInput, chatBtn, minimizeBtn, camToggleBtn, tipOverlay;
+
+let notificationTimeout; let myUsername = ""; let currentSelectedAvatar = "cone"; let currentSelectedRole = "developer";
 let audioPlayerNode = null; let audioPlaylistQueue = []; let pendingUserRequests = []; 
 let selectedKickClientId = null; let selectedKickName = "";
 let isTrackLooping = false; let currentVolumeLevel = 70;
 let bubbleTimeout;
 
-// II. EXPOSE FUNCTIONS TO WINDOW TARGET SCOPE (Mencegah Klik Membeku / Freeze)
+// III. EXPOSE FUNCTIONS TO WINDOW SCOPE (Menjamin Tombol HTML Tidak Membeku)
 window.toggleAdminMinimize = function() {
     const panel = document.getElementById('admin-menu-panel'); const body = document.getElementById('admin-panel-body');
     window.isAdminMinimized = !window.isAdminMinimized;
-    body.style.display = window.isAdminMinimized ? 'none' : 'block';
-    panel.style.height = window.isAdminMinimized ? '40px' : '185px';
-    document.getElementById('admin-min-btn').innerText = window.isAdminMinimized ? '＋' : '−';
+    if(body && panel) {
+        body.style.display = window.isAdminMinimized ? 'none' : 'block';
+        panel.style.height = window.isAdminMinimized ? '40px' : '185px';
+        document.getElementById('admin-min-btn').innerText = window.isAdminMinimized ? '＋' : '−';
+    }
 };
 
 window.toggleDevMinimize = function() {
     const panel = document.getElementById('dev-menu-panel'); const body = document.getElementById('dev-panel-body');
     window.isDevMinimized = !window.isDevMinimized;
-    body.style.display = window.isDevMinimized ? 'none' : 'block';
-    panel.style.height = window.isDevMinimized ? '40px' : '195px';
-    document.getElementById('dev-min-btn').innerText = window.isDevMinimized ? '＋' : '−';
+    if(body && panel) {
+        body.style.display = window.isDevMinimized ? 'none' : 'block';
+        panel.style.height = window.isDevMinimized ? '40px' : '195px';
+        document.getElementById('dev-min-btn').innerText = window.isDevMinimized ? '＋' : '−';
+    }
 };
 
 window.openMusicController = function() { document.getElementById('music-controller-panel').style.display = 'block'; };
@@ -49,8 +56,10 @@ window.closeMusicController = function() { document.getElementById('music-contro
 window.toggleMusicMinimize = function() {
     window.isMusicMinimized = !window.isMusicMinimized;
     const mPanel = document.getElementById('music-controller-panel');
-    mPanel.classList.toggle('minimized', window.isMusicMinimized);
-    document.getElementById('music-title-header').innerText = window.isMusicMinimized ? "🎵 Player Minimized..." : "🎵 IMVU Room Music Player";
+    if(mPanel) {
+        mPanel.classList.toggle('minimized', window.isMusicMinimized);
+        document.getElementById('music-title-header').innerText = window.isMusicMinimized ? "🎵 Player Minimized..." : "🎵 IMVU Room Music Player";
+    }
 };
 
 window.addAudioStreamTrackRoute = function() {
@@ -129,7 +138,7 @@ window.closeKickModal = function() { document.getElementById('kick-modal').style
 
 window.adminAction = function(actionType) {
     if(actionType === 'clear') {
-        document.getElementById('chat-log').innerHTML = `<div class="chat-msg" style="color:var(--neon-admin)"><span class="sender">Sistem:</span> Log chat dibersihkan oleh Admin.</div>`; triggerSystemNotice("🧹 Chat Cleared!");
+        chatLog.innerHTML = `<div class="chat-msg" style="color:var(--neon-admin)"><span class="sender">Sistem:</span> Log chat dibersihkan oleh Admin.</div>`; triggerSystemNotice("🧹 Chat Cleared!");
     } else if (actionType === 'sun') {
         const colors = ['#f05423', '#00ff66', '#ff2a5f', '#feb139', '#00e5ff'];
         document.getElementById('sunset-sun').setAttribute('material', 'color', colors[Math.floor(Math.random() * colors.length)]); triggerSystemNotice(`☀️ Warna Matahari Berubah!`);
@@ -150,27 +159,27 @@ window.toggleMinimize = function() {
     window.isChatMinimized = !window.isChatMinimized; const logArea = document.getElementById('chat-log'); const inputArea = document.getElementById('chat-input-area');
     if (window.isChatMinimized) { logArea.style.display = 'none'; inputArea.style.display = 'none'; chatContainer.style.height = '45px'; minimizeBtn.innerText = '＋'; } 
     else { logArea.style.display = 'flex'; inputArea.style.display = 'flex'; chatContainer.style.height = '400px'; minimizeBtn.innerText = '−'; }
-    document.getElementById('player').components['chat-bubble'].updateVisibility();
+    const localPlayer = document.getElementById('player');
+    if(localPlayer && localPlayer.components['chat-bubble']) localPlayer.components['chat-bubble'].updateVisibility();
 };
 
 window.toggleUserRequestPanel = function() {
     const panel = document.getElementById('user-request-panel');
-    panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+    if(panel) panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
 };
 
-// III. INTERNAL CORE HELPER LOGICS
+// IV. INTERNAL CORE ENGINE HELPER LOGICS
 function selectAvatarState(type) { currentSelectedAvatar = type; document.querySelectorAll('.avatar-btn').forEach(btn => btn.classList.remove('selected')); document.getElementById(`btn-${type}`).classList.add('selected'); }
 
-// REKUES BARU: FRONTEND PASSWORD GATEWAY SECURITY (Mencegah Hacker/User Asing Memilih Admin/Dev)
 function selectRoleState(role) {
     if (role === 'admin') {
         const passwordInput = prompt("🔒 Masukkan Kode Otentikasi Admin:");
-        if (passwordInput !== "admin123") { // Silakan ubah password sesuai keinginanmu
+        if (passwordInput !== "admin123") { 
             alert("❌ Akses Ditolak! Password Admin Salah."); selectRoleState('user'); return;
         }
     } else if (role === 'developer') {
         const passwordInput = prompt("🔒 Masukkan Master Key Developer:");
-        if (passwordInput !== "dev123") { // Silakan ubah password sesuai keinginanmu
+        if (passwordInput !== "dev123") { 
             alert("❌ Akses Ditolak! Password Developer Salah."); selectRoleState('user'); return;
         }
     }
@@ -190,16 +199,17 @@ function playNextQueueTrack() {
 }
 
 function triggerSystemNotice(messageText, customDuration = 2000) {
+    if(!tipOverlay) return;
     clearTimeout(notificationTimeout); tipOverlay.innerHTML = messageText; tipOverlay.style.display = 'block'; tipOverlay.offsetHeight; tipOverlay.style.opacity = '1';
     notificationTimeout = setTimeout(() => {
         tipOverlay.style.opacity = '0';
-        setTimeout(() => { if(tipOverlay.style.opacity === '0') tipOverlay.style.display = 'none'; }, 400); 
+        setTimeout(() => { if(tipOverlay && tipOverlay.style.opacity === '0') tipOverlay.style.display = 'none'; }, 400); 
     }, customDuration); 
 }
 
-function initiateKickConfirmation(clientId, username) { selectedKickClientId = clientId; selectedKickName = username; document.getElementById('kick-target-display').innerText = username; document.getElementById('kick-state-list').style.display = 'none'; document.getElementById('kick-state-confirm').style.display = 'block'; }
 function renderAdminReviewDOM() {
-    const container = document.getElementById('admin-request-review-list'); container.innerHTML = "";
+    const container = document.getElementById('admin-request-review-list'); if(!container) return;
+    container.innerHTML = "";
     if(pendingUserRequests.length === 0) { container.innerHTML = `<div style="font-size:11px; color:#666; text-align:center; padding-top:10px;">Belum ada request.</div>`; return; }
     pendingUserRequests.forEach((req, index) => {
         const div = document.createElement('div'); div.style = "background:rgba(255,255,255,0.05); padding:6px; border-radius:4px; margin-bottom:5px; font-size:11px; display:flex; justify-content:space-between; align-items:center; border:1px solid rgba(0,229,255,0.1);";
@@ -209,17 +219,22 @@ function renderAdminReviewDOM() {
 }
 
 function executeStartGame() {
-    const nameInput = document.getElementById('username-input'); myUsername = Security.sanitizeHTML(nameInput.value.trim());
+    const nameInput = document.getElementById('username-input'); 
+    myUsername = Security.sanitizeHTML(nameInput.value.trim());
     if(myUsername === "") myUsername = "User_" + Math.floor(Math.random() * 9000 + 1000);
+
     window.myRole = currentSelectedRole; 
     document.getElementById('avatar-selector').style.display = 'none'; camToggleBtn.style.display = 'block';
     initImvuAudioEngine();
+    
     if (window.myRole === 'developer') { document.getElementById('admin-menu-panel').style.display = 'block'; document.getElementById('dev-menu-panel').style.display = 'block'; } 
     else if (window.myRole === 'admin') { document.getElementById('admin-menu-panel').style.display = 'block'; } 
     else { document.getElementById('user-song-trigger-btn').style.display = 'block'; }
+    
     const prefixTag = window.myRole === 'developer' ? '[DEV] ' : (window.myRole === 'admin' ? '[ADMIN] ' : '');
     const finalIdentityString = prefixTag + myUsername;
     triggerSystemNotice(`👋 Selamat Datang, ${myUsername}!<br>Level Anda: <b>${window.myRole.toUpperCase()}</b>`);
+    
     const playerEl = document.getElementById('player');
     playerEl.setAttribute('networked', `template:#avatar-${currentSelectedAvatar}; attachTemplateToLocal:true;`); playerEl.setAttribute('player-name', finalIdentityString);
     setTimeout(() => { updateCameraView(); }, 500); bindChatSystem(playerEl);
@@ -250,18 +265,30 @@ function updateCameraView() {
     else { cameraEl.setAttribute('position', `0 ${baseHeight} 0`); camToggleBtn.innerText = '📷 Mode: FPS'; if (localMesh) localMesh.setAttribute('scale', '0 0 0'); }
 }
 
-// IV. CENTRAL EVENT BINDING ENGINE (DOMContentLoaded Terisolasi Aman)
+// V. INITIALIZATION MATRIX (Menjamin Penugasan DOM Berjalan Tepat Waktu)
 document.addEventListener("DOMContentLoaded", () => {
+    // Pengisian variabel penunjuk DOM element secara aman
+    chatContainer = document.getElementById('chat-container');
+    chatLog = document.getElementById('chat-log');
+    chatInput = document.getElementById('chat-input');
+    chatBtn = document.getElementById('chat-btn');
+    minimizeBtn = document.getElementById('minimize-btn');
+    camToggleBtn = document.getElementById('camera-toggle-btn');
+    tipOverlay = document.getElementById('shortcut-tip');
+
+    // Pengikat klik opsi bentuk avatar
     const btnCone = document.getElementById('btn-cone'); const btnBox = document.getElementById('btn-box'); const btnSphere = document.getElementById('btn-sphere');
     if (btnCone) btnCone.addEventListener('click', () => selectAvatarState('cone'));
     if (btnBox) btnBox.addEventListener('click', () => selectAvatarState('box'));
     if (btnSphere) btnSphere.addEventListener('click', () => selectAvatarState('sphere'));
 
+    // Pengikat klik opsi tingkatan hak akses role
     const roleUser = document.getElementById('role-user'); const roleAdmin = document.getElementById('role-admin'); const roleDev = document.getElementById('role-dev');
     if (roleUser) roleUser.addEventListener('click', () => selectRoleState('user'));
     if (roleAdmin) roleAdmin.addEventListener('click', () => selectRoleState('admin'));
     if (roleDev) roleDev.addEventListener('click', () => selectRoleState('developer'));
 
+    // Pengikat klik tombol utama START GAME
     const startBtn = document.getElementById('start-btn');
     if (startBtn) {
         startBtn.addEventListener('click', () => {
@@ -279,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (closeUserReq) closeUserReq.addEventListener('click', window.toggleUserRequestPanel);
 });
 
-// V. REGISTER REMAINING EXTENSIONS COMPONENTS
+// VI. RE-REGISTER REMAINING VR ENGINE COMPONENTS
 AFRAME.registerComponent('physical-presence', {
     schema: { radius: { type: 'number', default: 28 } },
     tick: function () {
