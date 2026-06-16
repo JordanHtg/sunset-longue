@@ -51,7 +51,6 @@
                 <button class="panel-btn" onclick="adminAction('sun')">☀️ Ubah Warna Matahari</button>
             </div>
         </div>
-
         <div class="privilege-panel" id="dev-menu-panel">
             <div class="panel-header">
                 <div class="panel-min-btn" id="dev-min-btn" onclick="toggleDevMinimize()">−</div>
@@ -115,16 +114,16 @@
 
     <div class="floating-window" id="kick-modal">
         <div id="kick-state-list">
-            <div class="modal-title" style="font-size:16px; color:var(--neon-admin); text-align:center; margin-bottom:15px; font-weight:bold;">Pilih User Yang Ingin Di-Kick</div>
+            <div class="modal-title">Pilih User Yang Ingin Di-Kick</div>
             <div class="user-list-container" id="kick-user-list"></div>
-            <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center; margin-top:12px;">
+            <div class="modal-actions">
                 <button class="modal-btn btn-secondary" onclick="closeKickModal()">Batal</button>
             </div>
         </div>
-        <div id="kick-state-confirm" style="display: none; text-align:center;">
-            <div class="modal-title" style="color: #ff0000; font-size:16px;">⚠️ Konfirmasi Tindakan</div>
-            <div class="modal-msg" style="margin: 15px 0;">Yakin ingin kick <br><b id="kick-target-display" style="color: var(--gold-sunset);"></b>?</div>
-            <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center;">
+        <div id="kick-state-confirm" style="display: none;">
+            <div class="modal-title" style="color: #ff0000;">⚠️ Konfirmasi Tindakan</div>
+            <div class="modal-msg">Yakin ingin kick <br><b id="kick-target-display"></b>?</div>
+            <div class="modal-actions">
                 <button class="modal-btn btn-danger" onclick="confirmKickAction()">Kick</button>
                 <button class="modal-btn btn-secondary" onclick="cancelKickAction()">Tidak</button>
             </div>
@@ -147,7 +146,7 @@
     </div>
 
     <a-scene networked-scene="
-        room: sunset-lounge-v7;
+        room: sunset-lounge-v8;
         debug: true;
         adapter: socketio;
         serverURL: https://jordanhtg-sunset-lounge-backend.hf.space;
