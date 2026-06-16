@@ -5,12 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sunset Social Hub - Secure WebVR Platform</title>
     <link rel="stylesheet" href="css/style.css">
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://unpkg.com/networked-aframe@^0.12.0/dist/networked-aframe.min.js"></script>
+    
+    <script src="js/security.js"></script>
+    <script src="js/main.js"></script>
 </head>
 <body>
 
     <div id="avatar-selector">
         <div class="selector-title">SUNSET LOUNGE MULTIPLAYER</div>
         <input type="text" id="username-input" placeholder="Masukkan Nama Anda..." maxlength="14">
+        
         <div class="setup-row">
             <div class="setup-label">Pilih Bentuk Avatar:</div>
             <div class="avatar-options">
@@ -19,6 +27,7 @@
                 <button class="avatar-btn" id="btn-sphere">Wujud Sphere</button>
             </div>
         </div>
+
         <div class="setup-row">
             <div class="setup-label">Pilih Tingkat Level (Privilege):</div>
             <div class="avatar-options">
@@ -42,6 +51,7 @@
                 <button class="panel-btn" onclick="adminAction('sun')">☀️ Ubah Warna Matahari</button>
             </div>
         </div>
+
         <div class="privilege-panel" id="dev-menu-panel">
             <div class="panel-header">
                 <div class="panel-min-btn" id="dev-min-btn" onclick="toggleDevMinimize()">−</div>
@@ -95,7 +105,7 @@
     <div class="floating-window" id="user-request-panel">
         <div class="window-header" style="background: #2b1c04; color: var(--gold-sunset); padding: 8px 12px;">
             <div style="font-size:12px;">📥 Kirim Request Link Audio MP3</div>
-            <span class="window-action-btn" onclick="toggleUserRequestPanel()">X</span>
+            <span class="window-action-btn" id="close-user-req-btn">X</span>
         </div>
         <div class="window-body" style="padding: 10px;">
             <input type="text" class="modal-text-input" id="user-song-link-input" placeholder="Paste direct link mp3...">
@@ -105,16 +115,16 @@
 
     <div class="floating-window" id="kick-modal">
         <div id="kick-state-list">
-            <div class="modal-title">Pilih User Yang Ingin Di-Kick</div>
+            <div class="modal-title" style="font-size:16px; color:var(--neon-admin); text-align:center; margin-bottom:15px; font-weight:bold;">Pilih User Yang Ingin Di-Kick</div>
             <div class="user-list-container" id="kick-user-list"></div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center; margin-top:12px;">
                 <button class="modal-btn btn-secondary" onclick="closeKickModal()">Batal</button>
             </div>
         </div>
-        <div id="kick-state-confirm" style="display: none;">
-            <div class="modal-title" style="color: #ff0000;">⚠️ Konfirmasi Tindakan</div>
-            <div class="modal-msg">Yakin ingin kick <br><b id="kick-target-display"></b>?</div>
-            <div class="modal-actions">
+        <div id="kick-state-confirm" style="display: none; text-align:center;">
+            <div class="modal-title" style="color: #ff0000; font-size:16px;">⚠️ Konfirmasi Tindakan</div>
+            <div class="modal-msg" style="margin: 15px 0;">Yakin ingin kick <br><b id="kick-target-display" style="color: var(--gold-sunset);"></b>?</div>
+            <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center;">
                 <button class="modal-btn btn-danger" onclick="confirmKickAction()">Kick</button>
                 <button class="modal-btn btn-secondary" onclick="cancelKickAction()">Tidak</button>
             </div>
@@ -140,7 +150,7 @@
         room: sunset-lounge-v7;
         debug: true;
         adapter: socketio;
-        serverURL: https://jordanbiore123-sunset-lounge-backend.hf.space;
+        serverURL: https://jordanhtg-sunset-lounge-backend.hf.space;
     ">
         <a-assets>
             <template id="avatar-cone">
@@ -209,8 +219,5 @@
         <a-light type="ambient" color="#4a2b56" intensity="0.5"></a-light>
         <a-light type="directional" color="#f05423" intensity="1.0" position="0 5 -50"></a-light>
     </a-scene>
-
-    <script src="js/security.js"></script>
-    <script src="js/main.js"></script>
 </body>
 </html>
