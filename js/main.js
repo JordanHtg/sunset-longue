@@ -1,22 +1,22 @@
 /**
  * Sunset Social Hub - Core System Logic
- * v8.6 Ultimate Stable Engine - Fully Restored Camera Logic & Lifecycle Fix
+ * v8.9 Multiplayer Fix Edition - Fixed ID Mismatches & Restored Control Binding Matrix
  */
 
 // =========================================================================
-// INTERCEPTOR MATRIX: Memaksa Socket Menggunakan Protokol WebSocket Murni
+// INTERCEPTOR MATRIX: Memaksa Transportasi Socket Menggunakan Jalur Murni WebSocket
 // =========================================================================
 if (typeof window.io !== 'undefined') {
     const originalIo = window.io;
     window.io = function(url, opts) {
         opts = opts || {};
-        opts.transports = ['websocket'];
+        opts.transports = ['websocket']; 
         return originalIo(url, opts);
     };
 }
 
 // =========================================================================
-// GRUP 1: REGISTRASI KOMPONEN AFRAME (Wajib Di Head Sebelum Scene Dirender)
+// GRUP 1: REGISTRASI KOMPONEN AFRAME (Wajib di Head)
 // =========================================================================
 if (typeof AFRAME !== 'undefined') {
     AFRAME.registerComponent('mouse-look', {
@@ -89,7 +89,7 @@ if (typeof AFRAME !== 'undefined') {
 }
 
 // =========================================================================
-// GRUP 2: VARIABEL STATE GLOBAL
+// GRUP 2: ALOKASI INSTANCE VARIABEL GLOBAL
 // =========================================================================
 let chatContainer, chatLog, chatInput, chatBtn, minimizeBtn, camToggleBtn, tipOverlay;
 let notificationTimeout; let myUsername = ""; let currentSelectedAvatar = "cone"; let currentSelectedRole = "user"; 
@@ -99,7 +99,7 @@ let isTrackLooping = false; let currentVolumeLevel = 70;
 let bubbleTimeout;
 
 // =========================================================================
-// GRUP 3: DEKLARASI FUNGSIONAL STANDARD (Hoisted Functions)
+// GRUP 3: DEKLARASI FUNGSIONAL STANDARD (Anti Null Crash Engine)
 // =========================================================================
 function triggerSystemNotice(messageText, customDuration = 2000) {
     if(!tipOverlay) return;
@@ -165,7 +165,11 @@ function selectRoleState(role) {
     }
     currentSelectedRole = role;
     document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('selected'));
-    document.getElementById(`role-${role}`).classList.add('selected');
+    
+    // FIX INTUISION: Target pencarian ID diubah menjadi role-developer agar lolos dari null crash
+    const targetId = (role === 'developer') ? 'role-developer' : `role-${role}`;
+    const targetEl = document.getElementById(targetId);
+    if(targetEl) targetEl.classList.add('selected');
 }
 
 function toggleAdminMinimize() {
@@ -223,6 +227,32 @@ function submitUserSongRequest() {
     input.value = ""; toggleUserRequestPanel(); triggerSystemNotice("🚀 Request dikirim ke Admin Panel!"); renderAdminReviewDOM();
 }
 
+function executeStartGame() {
+    const nameInput = document.getElementById('username-input'); if(!nameInput) return;
+    myUsername = Security.sanitizeHTML(nameInput.value.trim());
+    if(myUsername === "") myUsername = "User_" + Math.floor(Math.random() * 9000 + 1000);
+
+    window.myRole = currentSelectedRole; 
+    document.getElementById('avatar-selector').style.display = 'none'; camToggleBtn.style.display = 'block';
+    initImvuAudioEngine();
+
+    if (window.myRole === 'developer') { document.getElementById('admin-menu-panel').style.display = 'block'; document.getElementById('dev-menu-panel').style.display = 'block'; } 
+    else if (window.myRole === 'admin') { document.getElementById('admin-menu-panel').style.display = 'block'; } 
+    else { document.getElementById('user-song-trigger-btn').style.display = 'block'; }
+
+    const prefixTag = window.myRole === 'developer' ? '[DEV] ' : (window.myRole === 'admin' ? '[ADMIN] ' : '');
+    const finalIdentityString = prefixTag + myUsername;
+    triggerSystemNotice(`👋 Selamat Datang, ${myUsername}!<br>Level Anda: <b>${window.myRole.toUpperCase()}</b>`);
+
+    const playerEl = document.getElementById('player');
+    if(playerEl) {
+        playerEl.setAttribute('networked', `template:#avatar-${currentSelectedAvatar}; attachTemplateToLocal:true;`); 
+        playerEl.setAttribute('player-name', finalIdentityString);
+    }
+    setTimeout(() => { toggleCameraLock(true); }, 500); bindChatSystem(playerEl);
+    if(chatLog) chatLog.innerHTML = `<div class="chat-msg"><span class="sender">Sistem:</span> Anda terhubung sebagai <b>${finalIdentityString}</b>.</div>`;
+}
+
 function reviewRequestAction(index, isAccepted) {
     const targeted = pendingUserRequests[index];
     if(isAccepted) {
@@ -263,11 +293,13 @@ function cancelKickAction() { document.getElementById('kick-modal').style.displa
 function closeKickModal() { document.getElementById('kick-modal').style.display = 'none'; }
 
 function adminAction(actionType) {
-    if(actionType === 'clear') {
-        chatLog.innerHTML = `<div class="chat-msg" style="color:var(--neon-admin)"><span class="sender">Sistem:</span> Log chat dibersihkan oleh Admin.</div>`; triggerSystemNotice("🧹 Chat Cleared!");
-    } else if (actionType === 'sun') {
-        const colors = ['#f05423', '#00ff66', '#ff2a5f', '#feb139', '#00e5ff'];
-        document.getElementById('sunset-sun').setAttribute('material', 'color', colors[Math.floor(Math.random() * colors.length)]); triggerSystemNotice(`☀️ Warna Matahari Berubah!`);
+    if(chatLog) {
+        if(actionType === 'clear') {
+            chatLog.innerHTML = `<div class="chat-msg" style="color:var(--neon-admin)"><span class="sender">Sistem:</span> Log chat dibersihkan oleh Admin.</div>`; triggerSystemNotice("🧹 Chat Cleared!");
+        } else if (actionType === 'sun') {
+            const colors = ['#f05423', '#00ff66', '#ff2a5f', '#feb139', '#00e5ff'];
+            document.getElementById('sunset-sun').setAttribute('material', 'color', colors[Math.floor(Math.random() * colors.length)]); triggerSystemNotice(`☀️ Warna Matahari Berubah!`);
+        }
     }
 }
 
@@ -280,54 +312,6 @@ function devAction(actionType) {
     }
 }
 
-function executeStartGame() {
-    const nameInput = document.getElementById('username-input'); if(!nameInput) return;
-    myUsername = Security.sanitizeHTML(nameInput.value.trim());
-    if(myUsername === "") myUsername = "User_" + Math.floor(Math.random() * 9000 + 1000);
-
-    window.myRole = currentSelectedRole; 
-    document.getElementById('avatar-selector').style.display = 'none'; camToggleBtn.style.display = 'block';
-    initImvuAudioEngine();
-
-    if (window.myRole === 'developer') { document.getElementById('admin-menu-panel').style.display = 'block'; document.getElementById('dev-menu-panel').style.display = 'block'; } 
-    else if (window.myRole === 'admin') { document.getElementById('admin-menu-panel').style.display = 'block'; } 
-    else { document.getElementById('user-song-trigger-btn').style.display = 'block'; }
-
-    const prefixTag = window.myRole === 'developer' ? '[DEV] ' : (window.myRole === 'admin' ? '[ADMIN] ' : '');
-    const finalIdentityString = prefixTag + myUsername;
-    triggerSystemNotice(`👋 Selamat Datang, ${myUsername}!<br>Level Anda: <b>${window.myRole.toUpperCase()}</b>`);
-
-    const playerEl = document.getElementById('player');
-    if(playerEl) {
-        playerEl.setAttribute('networked', `template:#avatar-${currentSelectedAvatar}; attachTemplateToLocal:true;`); 
-        playerEl.setAttribute('player-name', finalIdentityString);
-    }
-    setTimeout(() => { toggleCameraLock(true); }, 500); bindChatSystem(playerEl);
-    if(chatLog) chatLog.innerHTML = `<div class="chat-msg"><span class="sender">Sistem:</span> Anda terhubung sebagai <b>${finalIdentityString}</b>.</div>`;
-}
-
-function bindChatSystem(activePlayerEl) {
-    function executeSend() {
-        const text = Security.sanitizeHTML(chatInput.value.trim()); if (text === '') return;
-        if(activePlayerEl) activePlayerEl.setAttribute('chat-bubble', text);
-        const senderPrefix = (window.myRole === 'developer' ? '[DEV] ' : (window.myRole === 'admin' ? '[ADMIN] ' : ''));
-        appendToLog(senderPrefix + myUsername, text); chatInput.value = ''; chatInput.blur(); 
-        clearTimeout(bubbleTimeout); bubbleTimeout = setTimeout(() => { if(activePlayerEl) activePlayerEl.setAttribute('chat-bubble', ''); }, 6000);
-    }
-    if(chatBtn && chatInput) {
-        chatBtn.onclick = executeSend; chatInput.onkeypress = (e) => { if (e.key === 'Enter') executeSend(); };
-    }
-}
-
-function appendToLog(senderName, message) {
-    if(!chatLog) return;
-    const msgEl = document.createElement('div'); msgEl.className = 'chat-msg';
-    const senderSpan = document.createElement('span'); senderSpan.className = 'sender'; senderSpan.innerText = senderName + ": ";
-    msgEl.appendChild(senderSpan); msgEl.appendChild(document.createTextNode(message)); 
-    chatLog.appendChild(msgEl); chatLog.scrollTop = chatLog.scrollHeight;
-}
-
-// FIX: Pemulihan Fungsi Kamera Yang Hilang
 function toggleCameraMode() {
     window.isTpp = !window.isTpp;
     updateCameraView();
@@ -352,12 +336,13 @@ function toggleUserRequestPanel() {
     const panel = document.getElementById('user-request-panel'); if(panel) panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
 }
 
-// FIX: Pemulihan Kunci Mouse Kamera Aktif Canvas
+// FIX: Target penembakan pointer lock dialihkan ke document.body agar kebal dari status canvas uninitialized
 function toggleCameraLock(forceLock = false) {
     const sceneEl = document.querySelector('a-scene');
-    if (sceneEl && sceneEl.canvas) {
-        if (forceLock || document.pointerLockElement !== sceneEl.canvas) {
-            sceneEl.canvas.requestPointerLock();
+    if (sceneEl) {
+        const targetElement = sceneEl.canvas || document.body;
+        if (forceLock || document.pointerLockElement !== targetElement) {
+            targetElement.requestPointerLock();
         } else {
             document.exitPointerLock();
         }
@@ -365,7 +350,7 @@ function toggleCameraLock(forceLock = false) {
 }
 
 // =========================================================================
-// GRUP 4: PEMETAAN WINDOW SECARA BERSIH DAN AMAN
+// GRUP 4: PEMETAAN STRUKTUR WINDOW KE GLOBAL SCOPE
 // =========================================================================
 window.toggleAdminMinimize = toggleAdminMinimize; window.toggleDevMinimize = toggleDevMinimize;
 window.openMusicController = openMusicController; window.closeMusicController = closeMusicController;
@@ -378,7 +363,7 @@ window.toggleCameraMode = toggleCameraMode; window.toggleMinimize = toggleMinimi
 window.toggleUserRequestPanel = toggleUserRequestPanel; window.toggleCameraLock = toggleCameraLock;
 
 // =========================================================================
-// GRUP 5: INTERACTION MATRIX CENTRAL (Hanya Berjalan Saat DOM Siap Sempurna)
+// GRUP 5: INTERACTION CENTRAL INITIALIZATION (DOM Ready Engine)
 // =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
     chatContainer = document.getElementById('chat-container');
@@ -394,10 +379,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnBox) btnBox.addEventListener('click', () => selectAvatarState('box'));
     if (btnSphere) btnSphere.addEventListener('click', () => selectAvatarState('sphere'));
 
-    const roleUser = document.getElementById('role-user'); const roleAdmin = document.getElementById('role-admin'); const roleDev = document.getElementById('role-dev');
+    const roleUser = document.getElementById('role-user'); const roleAdmin = document.getElementById('role-admin'); const roleDeveloper = document.getElementById('role-developer');
     if (roleUser) roleUser.addEventListener('click', () => selectRoleState('user'));
     if (roleAdmin) roleAdmin.addEventListener('click', () => selectRoleState('admin'));
-    if (roleDev) roleDev.addEventListener('click', () => selectRoleState('developer'));
+    if (roleDeveloper) roleDeveloper.addEventListener('click', () => selectRoleState('developer'));
 
     const startBtn = document.getElementById('start-btn');
     if (startBtn) {
@@ -411,11 +396,12 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // =========================================================================
-// GRUP 6: EVENT SHORTCUT KEYBOARD MATRIX (CTRL / FOKUS CHAT)
+// GRUP 6: SHORTCUT KEYBOARD EVENT ENGINE (Penguncian Tombol Kontrol)
 // =========================================================================
 window.addEventListener('keydown', function(e) {
     if (document.activeElement === chatInput || document.activeElement.tagName === 'INPUT') return;
     
+    // FIX: Penguncian kamera menggunakan tombol Control dipastikan aktif stabil
     if (e.key === 'Control') { 
         e.preventDefault(); 
         window.toggleCameraLock(false); 
